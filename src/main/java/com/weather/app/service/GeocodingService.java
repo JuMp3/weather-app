@@ -9,6 +9,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.weather.app.config.CacheConfig;
+import org.springframework.cache.annotation.Cacheable;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -36,6 +39,11 @@ public class GeocodingService {
         this.objectMapper = objectMapper;
     }
 
+    @Cacheable(
+            value = CacheConfig.GEOCODING_CACHE,
+            key = "#query.toLowerCase() + '-' + #count",
+            condition = "#query != null && #query.length() >= 2"
+    )
     public List<GeoLocation> searchCities(String query, int count) {
         if (query == null || query.trim().length() < 2) {
             return Collections.emptyList();

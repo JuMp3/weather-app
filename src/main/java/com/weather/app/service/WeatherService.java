@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.weather.app.config.CacheConfig;
+import org.springframework.cache.annotation.Cacheable;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -55,6 +58,7 @@ public class WeatherService {
         this.weatherCodeService = weatherCodeService;
     }
 
+    @Cacheable(value = CacheConfig.WEATHER_CACHE, key = "#location.latitude + ',' + #location.longitude")
     public WeatherViewModel getWeather(GeoLocation location) throws IOException, InterruptedException {
         String url = forecastBaseUrl + "/forecast"
                 + "?latitude=" + location.getLatitude()
