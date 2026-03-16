@@ -1,0 +1,32 @@
+server:
+  port: ${PORT:8080}
+
+spring:
+  application:
+    name: weather-app
+  thymeleaf:
+    cache: false
+    encoding: UTF-8
+  jackson:
+    default-property-inclusion: non_null
+    #serialization:
+    #  indent-output: true
+
+weather:
+  geocoding:
+    url: https://geocoding-api.open-meteo.com/v1
+  forecast:
+    url: https://api.open-meteo.com/v1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.weather: INFO
