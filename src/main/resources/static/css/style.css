@@ -348,7 +348,7 @@ body {
 .hourly-time { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); }
 .hourly-icon { font-size: 1.5rem; }
 .hourly-temp { font-size: 0.95rem; font-weight: 700; }
-.hourly-rain { font-size: 0.75rem; color: rgba(100,180,255,0.9); }
+.hourly-rain { font-size: 0.75rem; color: #fff; text-shadow: 0 1px 4px rgba(0,20,100,0.7); font-weight: 600; }
 
 /* Daily Forecast */
 .daily-list { display: flex; flex-direction: column; gap: 8px; }
@@ -384,7 +384,7 @@ body {
 .temp-bar-wrapper { width: 40px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; }
 
 .daily-extra { display: flex; flex-direction: column; gap: 3px; font-size: 0.78rem; }
-.daily-rain { color: rgba(100,180,255,0.9); }
+.daily-rain { color: #fff; text-shadow: 0 1px 4px rgba(0,20,100,0.7); font-weight: 600; }
 .daily-wind { color: var(--text-muted); }
 
 .daily-sun { display: flex; flex-direction: column; gap: 2px; font-size: 0.78rem; color: var(--text-muted); }
@@ -421,6 +421,96 @@ body {
     .daily-item { grid-template-columns: 1fr 1fr; gap: 8px; }
     .daily-weather { flex-direction: column; align-items: flex-start; }
     .mini-autocomplete { width: calc(100vw - 32px); right: -8px; }
+}
+
+/* Share button */
+.btn-share {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 8px;
+    color: var(--text-white);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 7px 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: background var(--transition), transform var(--transition);
+}
+.btn-share:hover { background: rgba(255,255,255,0.25); transform: translateY(-1px); }
+.btn-share.copied { background: rgba(80,200,120,0.3); border-color: rgba(80,200,120,0.5); }
+
+/* Share dropdown */
+.share-wrapper { position: relative; flex-shrink: 0; }
+
+.share-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: rgba(10,20,50,0.97);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    min-width: 190px;
+    z-index: 200;
+    overflow: hidden;
+}
+
+.share-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    color: var(--text-white);
+    font-family: var(--font);
+    font-size: 0.88rem;
+    font-weight: 500;
+    padding: 12px 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--transition);
+}
+.share-option:last-child { border-bottom: none; }
+.share-option:hover { background: rgba(255,255,255,0.1); }
+
+/* Section title row (title + return button) */
+.section-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+}
+.section-title-row .section-title { margin-bottom: 0; }
+
+/* Return to today button */
+.btn-return-today {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.28);
+    border-radius: 20px;
+    color: var(--text-white);
+    font-family: var(--font);
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 5px 14px;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+.btn-return-today:hover { background: rgba(255,255,255,0.25); }
+
+/* Selectable day items */
+.selectable-day { cursor: pointer; }
+
+/* Selected day highlight */
+.daily-item.selected {
+    background: rgba(255,255,255,0.22);
+    border-color: rgba(255,255,255,0.5);
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.18);
 }
 
 /* Attribution */

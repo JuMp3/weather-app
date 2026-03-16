@@ -17,6 +17,7 @@ public class WeatherViewModel {
     private CurrentInfo current;
     private List<DailyForecast> dailyForecasts;
     private List<HourlySlot> nextHours;
+    private List<HourlySlot> allHourlySlots;
 
     @Data
     public static class CurrentInfo {
@@ -41,6 +42,7 @@ public class WeatherViewModel {
 
     @Data
     public static class DailyForecast {
+        private String isoDate;
         private String date;
         private String dayName;
         private int weatherCode;

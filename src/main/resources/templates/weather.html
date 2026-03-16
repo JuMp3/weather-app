@@ -19,6 +19,14 @@
             <input type="hidden" id="miniLon"/>
             <div id="mini-autocomplete" class="autocomplete-list mini-autocomplete"></div>
         </div>
+        <div class="share-wrapper" id="shareWrapper">
+            <button id="shareBtn" class="btn-share" onclick="toggleShareMenu()">📤 Condividi</button>
+            <div id="shareMenu" class="share-menu" style="display:none">
+                <button class="share-option" onclick="shareLink()">🔗 Copia link</button>
+                <button class="share-option" onclick="shareEmail()">✉️ Invia via email</button>
+                <button class="share-option" onclick="shareText()">📋 Copia testo meteo</button>
+            </div>
+        </div>
     </nav>
 
     <div class="weather-container">
@@ -31,26 +39,26 @@
                     <div class="city-meta">
                         <span th:text="'📍 ' + ${weather.latitude} + '°, ' + ${weather.longitude} + '°'"></span>
                         <span th:if="${weather.elevation != null}" th:text="'⛰️ ' + ${weather.elevation} + 'm'"></span>
-                        <span th:text="'🕐 Aggiornato: ' + ${weather.current.time}"></span>
+                        <span id="card-time-info" th:text="'🕐 Aggiornato: ' + ${weather.current.time}"></span>
                     </div>
                 </div>
-                <div class="weather-icon-large" th:text="${weather.current.weatherIcon}"></div>
+                <div id="card-weather-icon" class="weather-icon-large" th:text="${weather.current.weatherIcon}"></div>
             </div>
 
             <div class="temp-section">
                 <div class="temp-main">
-                    <span class="temp-value" th:text="${weather.current.temperature}">20</span>
-                    <span class="temp-unit">°C</span>
+                    <span id="card-temp-value" class="temp-value" th:text="${weather.current.temperature}">20</span>
+                    <span id="card-temp-unit" class="temp-unit">°C</span>
                 </div>
-                <div class="temp-feels">
+                <div id="card-feels" class="temp-feels">
                     <span>Percepita </span>
                     <span th:text="${weather.current.feelsLike} + '°C'"></span>
                 </div>
-                <div class="weather-desc" th:text="${weather.current.weatherDescription}">Cielo sereno</div>
+                <div id="card-weather-desc" class="weather-desc" th:text="${weather.current.weatherDescription}">Cielo sereno</div>
             </div>
 
             <!-- Weather Details Grid -->
-            <div class="details-grid">
+            <div id="card-details" class="details-grid">
                 <div class="detail-item">
                     <span class="detail-icon">💧</span>
                     <div class="detail-info">
@@ -113,10 +121,11 @@
         </div>
 
         <!-- Hourly Forecast -->
-        <div class="section-card" th:if="${not #lists.isEmpty(weather.nextHours)}">
-            <h2 class="section-title">🕐 Prossime 24 ore</h2>
-            <div class="hourly-scroll">
-                <div class="hourly-track">
+        <div id="hourly-section" class="section-card"
+             th:if="${weather.allHourlySlots != null and not #lists.isEmpty(weather.allHourlySlots)}">
+            <h2 id="hourly-title" class="section-title">🕐 Prossime 24 ore</h2>
+            <div class="hourly-scroll" id="hourly-scroll">
+                <div id="hourly-track" class="hourly-track">
                     <div th:each="slot : ${weather.nextHours}" class="hourly-item">
                         <span class="hourly-time" th:text="${slot.displayTime}">14:00</span>
                         <span class="hourly-icon" th:text="${slot.weatherIcon}">☀️</span>
@@ -131,10 +140,14 @@
 
         <!-- 7-Day Forecast -->
         <div class="section-card" th:if="${not #lists.isEmpty(weather.dailyForecasts)}">
-            <h2 class="section-title">📅 Previsioni 7 giorni</h2>
+            <div class="section-title-row">
+                <h2 class="section-title">📅 Previsioni 7 giorni</h2>
+                <button id="returnTodayBtn" class="btn-return-today" style="display:none" onclick="selectToday()">← Torna ad oggi</button>
+            </div>
             <div class="daily-list">
-                <div th:each="day : ${weather.dailyForecasts}"
-                     th:class="'daily-item' + (${day.today} ? ' today' : '')">
+                <div th:each="day, iter : ${weather.dailyForecasts}"
+                     th:attr="data-index=${iter.index}"
+                     th:class="'daily-item selectable-day' + (${day.today} ? ' today' : '')">
                     <div class="daily-day">
                         <span class="day-name" th:text="${day.dayName}">Oggi</span>
                         <span class="day-date" th:text="${day.date}">01/01</span>
@@ -169,20 +182,29 @@
 
     <p class="attribution">Dati meteo forniti da <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo.com</a> sotto licenza <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>
 
-    <script>
-        // Mini search in navbar
+    <script th:inline="javascript">
+        // Dati dal server (serializzati da Thymeleaf tramite Jackson)
+        const WEATHER = {
+            city:      /*[[${weather.cityDisplayName}]]*/ '',
+            timezone:  /*[[${weather.timezone}]]*/ '',
+            current:   /*[[${weather.current}]]*/ {},
+            daily:     /*[[${weather.dailyForecasts}]]*/ [],
+            allHourly: /*[[${weather.allHourlySlots}]]*/ [],
+            nextHours: /*[[${weather.nextHours}]]*/ []
+        };
+
+        // =====================================================
+        // MINI SEARCH IN NAVBAR
+        // =====================================================
         const miniInput = document.getElementById('miniCityInput');
-        const miniLat = document.getElementById('miniLat');
-        const miniLon = document.getElementById('miniLon');
-        const miniAc = document.getElementById('mini-autocomplete');
-        let miniTimer = null;
-        let miniSuggestions = [];
-        let miniIdx = -1;
+        const miniLat   = document.getElementById('miniLat');
+        const miniLon   = document.getElementById('miniLon');
+        const miniAc    = document.getElementById('mini-autocomplete');
+        let miniTimer = null, miniSuggestions = [], miniIdx = -1;
 
         miniInput.addEventListener('input', function() {
             const q = this.value.trim();
-            miniLat.value = '';
-            miniLon.value = '';
+            miniLat.value = ''; miniLon.value = '';
             clearTimeout(miniTimer);
             if (q.length < 2) { closeMini(); return; }
             miniTimer = setTimeout(() => fetchMini(q), 300);
@@ -197,17 +219,14 @@
                 else if (miniInput.value.trim().length >= 2) {
                     window.location.href = '/weather?city=' + encodeURIComponent(miniInput.value.trim());
                 }
-            }
-            else if (e.key === 'Escape') { closeMini(); }
+            } else if (e.key === 'Escape') { closeMini(); }
         });
 
         function updateMiniSel(items) {
             items.forEach((item, i) => item.classList.toggle('selected', i === miniIdx));
             if (miniIdx >= 0 && miniSuggestions[miniIdx]) {
                 const s = miniSuggestions[miniIdx];
-                miniInput.value = s.name;
-                miniLat.value = s.lat;
-                miniLon.value = s.lon;
+                miniInput.value = s.name; miniLat.value = s.lat; miniLon.value = s.lon;
             }
         }
 
@@ -220,10 +239,9 @@
         }
 
         function renderMini(cities) {
-            miniIdx = -1;
-            miniAc.innerHTML = '';
+            miniIdx = -1; miniAc.innerHTML = '';
             if (!cities || cities.length === 0) { closeMini(); return; }
-            cities.forEach((city, i) => {
+            cities.forEach((city) => {
                 const item = document.createElement('div');
                 item.className = 'autocomplete-item';
                 item.innerHTML = `<span class="ac-flag">${getFlagEmoji(city.countryCode)}</span>
@@ -238,11 +256,7 @@
             miniAc.classList.add('open');
         }
 
-        function closeMini() {
-            miniAc.innerHTML = '';
-            miniAc.classList.remove('open');
-            miniIdx = -1;
-        }
+        function closeMini() { miniAc.innerHTML = ''; miniAc.classList.remove('open'); miniIdx = -1; }
 
         function getFlagEmoji(cc) {
             if (!cc || cc.length !== 2) return '🌐';
@@ -253,29 +267,286 @@
             if (!e.target.closest('.nav-search-mini')) closeMini();
         });
 
-        // Drag-to-scroll per la sezione "Prossime 24 ore"
+        // Drag-to-scroll per la sezione oraria
         const hourlyScroll = document.querySelector('.hourly-scroll');
         if (hourlyScroll) {
-            let isDragging = false;
-            let startX, scrollLeft;
-
+            let isDragging = false, startX, scrollLeft;
             hourlyScroll.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                hourlyScroll.classList.add('dragging');
-                startX = e.pageX - hourlyScroll.offsetLeft;
-                scrollLeft = hourlyScroll.scrollLeft;
+                isDragging = true; hourlyScroll.classList.add('dragging');
+                startX = e.pageX - hourlyScroll.offsetLeft; scrollLeft = hourlyScroll.scrollLeft;
             });
-            document.addEventListener('mouseup', () => {
-                isDragging = false;
-                hourlyScroll.classList.remove('dragging');
-            });
+            document.addEventListener('mouseup', () => { isDragging = false; hourlyScroll.classList.remove('dragging'); });
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
                 e.preventDefault();
-                const x = e.pageX - hourlyScroll.offsetLeft;
-                hourlyScroll.scrollLeft = scrollLeft - (x - startX) * 1.5;
+                hourlyScroll.scrollLeft = scrollLeft - (e.pageX - hourlyScroll.offsetLeft - startX) * 1.5;
             });
         }
+
+        // =====================================================
+        // NAVIGAZIONE GIORNI
+        // =====================================================
+        document.querySelectorAll('.selectable-day').forEach(item => {
+            item.addEventListener('click', () => selectDay(parseInt(item.getAttribute('data-index'))));
+        });
+
+        function selectDay(idx) {
+            const day = WEATHER.daily[idx];
+            if (!day) return;
+
+            if (day.today) { selectToday(); return; }
+
+            // Evidenzia il giorno selezionato
+            document.querySelectorAll('.selectable-day').forEach(el => el.classList.remove('selected'));
+            document.querySelectorAll('.selectable-day')[idx].classList.add('selected');
+
+            document.getElementById('returnTodayBtn').style.display = '';
+
+            // Aggiorna header card
+            document.getElementById('card-time-info').textContent = '📅 ' + day.dayName + ' · ' + day.date;
+            document.getElementById('card-weather-icon').textContent = day.weatherIcon;
+
+            // Temperatura: max / min
+            document.getElementById('card-temp-value').textContent = day.tempMax;
+            document.getElementById('card-temp-unit').textContent = '°C';
+            document.getElementById('card-feels').innerHTML = '<span>Min </span><span>' + day.tempMin + '°C</span>';
+            document.getElementById('card-weather-desc').textContent = day.weatherDescription;
+
+            updateDetailsForDay(day);
+            updateHourlyForDay(day.isoDate, day.dayName);
+        }
+
+        function selectToday() {
+            const c = WEATHER.current;
+            document.querySelectorAll('.selectable-day').forEach(el => el.classList.remove('selected'));
+            document.getElementById('returnTodayBtn').style.display = 'none';
+
+            document.getElementById('card-time-info').textContent = '🕐 Aggiornato: ' + c.time;
+            document.getElementById('card-weather-icon').textContent = c.weatherIcon;
+            document.getElementById('card-temp-value').textContent = c.temperature;
+            document.getElementById('card-temp-unit').textContent = '°C';
+            document.getElementById('card-feels').innerHTML = '<span>Percepita </span><span>' + c.feelsLike + '°C</span>';
+            document.getElementById('card-weather-desc').textContent = c.weatherDescription;
+
+            updateDetailsForCurrent(c);
+            updateHourlyForToday();
+        }
+
+        function updateDetailsForDay(day) {
+            document.getElementById('card-details').innerHTML = `
+                <div class="detail-item">
+                    <span class="detail-icon">🌧️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Prob. pioggia</span>
+                        <span class="detail-value">${day.precipitationProbability != null ? day.precipitationProbability + '%' : '-'}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">💨</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Vento max</span>
+                        <span class="detail-value">${day.windSpeedMax != null ? day.windSpeedMax + ' km/h' : '-'}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">☀️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">UV max</span>
+                        <span class="detail-value">${day.uvIndexMax != null ? day.uvIndexMax : '-'}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">🌅</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Alba</span>
+                        <span class="detail-value">${day.sunrise || '-'}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">🌇</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Tramonto</span>
+                        <span class="detail-value">${day.sunset || '-'}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">🌐</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Fuso orario</span>
+                        <span class="detail-value">${WEATHER.timezone}</span>
+                    </div>
+                </div>`;
+        }
+
+        function updateDetailsForCurrent(c) {
+            document.getElementById('card-details').innerHTML = `
+                <div class="detail-item">
+                    <span class="detail-icon">💧</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Umidità</span>
+                        <span class="detail-value">${c.humidity}%</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">💨</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Vento</span>
+                        <span class="detail-value">${c.windSpeed} km/h ${c.windDirectionLabel}</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">🌡️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Pressione</span>
+                        <span class="detail-value">${c.pressure} hPa</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">👁️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Visibilità</span>
+                        <span class="detail-value">${c.visibilityKm} km</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">☁️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Nuvolosità</span>
+                        <span class="detail-value">${c.cloudCover}%</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">☀️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Indice UV</span>
+                        <span class="detail-value">${c.uvIndex}</span>
+                    </div>
+                </div>
+                ${c.precipitation != null ? `
+                <div class="detail-item">
+                    <span class="detail-icon">🌧️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Precipitazioni</span>
+                        <span class="detail-value">${c.precipitation} mm</span>
+                    </div>
+                </div>` : ''}
+                <div class="detail-item">
+                    <span class="detail-icon">🌐</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Fuso orario</span>
+                        <span class="detail-value">${WEATHER.timezone}</span>
+                    </div>
+                </div>`;
+        }
+
+        function renderHourlySlots(slots) {
+            if (!slots || slots.length === 0) return '<p style="color:var(--text-muted);padding:8px">Nessun dato disponibile</p>';
+            return slots.map(slot => `
+                <div class="hourly-item">
+                    <span class="hourly-time">${slot.displayTime}</span>
+                    <span class="hourly-icon">${slot.weatherIcon}</span>
+                    <span class="hourly-temp">${slot.temperature}°</span>
+                    <span class="hourly-rain">${slot.precipitationProbability != null ? '💧 ' + slot.precipitationProbability + '%' : '—'}</span>
+                </div>`).join('');
+        }
+
+        function updateHourlyForDay(isoDate, dayName) {
+            const track = document.getElementById('hourly-track');
+            const title = document.getElementById('hourly-title');
+            if (!track || !title) return;
+            const slots = (WEATHER.allHourly || []).filter(s => s.time && s.time.startsWith(isoDate));
+            title.textContent = '🕐 Ore di ' + dayName;
+            track.innerHTML = renderHourlySlots(slots);
+            const scroll = document.getElementById('hourly-scroll');
+            if (scroll) scroll.scrollLeft = 0;
+        }
+
+        function updateHourlyForToday() {
+            const track = document.getElementById('hourly-track');
+            const title = document.getElementById('hourly-title');
+            if (!track || !title) return;
+            title.textContent = '🕐 Prossime 24 ore';
+            track.innerHTML = renderHourlySlots(WEATHER.nextHours || []);
+            const scroll = document.getElementById('hourly-scroll');
+            if (scroll) scroll.scrollLeft = 0;
+        }
+
+        // =====================================================
+        // CONDIVIDI METEO
+        // =====================================================
+        function buildShareText() {
+            const selected = document.querySelector('.selectable-day.selected');
+            if (selected) {
+                const day = WEATHER.daily[parseInt(selected.getAttribute('data-index'))];
+                return `Meteo a ${WEATHER.city} — ${day.dayName} ${day.date}\n` +
+                       `${day.weatherIcon} ${day.weatherDescription}\n` +
+                       `🌡️ Max ${day.tempMax}°C / Min ${day.tempMin}°C\n` +
+                       `🌧️ Prob. pioggia: ${day.precipitationProbability != null ? day.precipitationProbability + '%' : '-'}\n` +
+                       `💨 Vento max: ${day.windSpeedMax != null ? day.windSpeedMax + ' km/h' : '-'}\n` +
+                       `🌅 ${day.sunrise}  🌇 ${day.sunset}`;
+            }
+            const c = WEATHER.current;
+            return `Meteo a ${WEATHER.city} — adesso\n` +
+                   `${c.weatherIcon} ${c.weatherDescription}\n` +
+                   `🌡️ ${c.temperature}°C (percepita ${c.feelsLike}°C)\n` +
+                   `💧 Umidità: ${c.humidity}%\n` +
+                   `💨 Vento: ${c.windSpeed} km/h ${c.windDirectionLabel}\n` +
+                   `☀️ Indice UV: ${c.uvIndex}`;
+        }
+
+        function toggleShareMenu() {
+            // Se Web Share API è disponibile (mobile), usa il pannello nativo
+            if (navigator.share) {
+                navigator.share({
+                    title: `Meteo ${WEATHER.city}`,
+                    url: window.location.href,
+                    text: buildShareText()
+                }).catch(() => {});
+                return;
+            }
+            const menu = document.getElementById('shareMenu');
+            menu.style.display = menu.style.display === 'none' ? '' : 'none';
+        }
+
+        function closeShareMenu() {
+            document.getElementById('shareMenu').style.display = 'none';
+        }
+
+        function shareLink() {
+            closeShareMenu();
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                showShareFeedback('🔗 Link copiato!');
+            }).catch(() => { prompt('Copia il link:', window.location.href); });
+        }
+
+        function shareEmail() {
+            closeShareMenu();
+            const text = buildShareText();
+            const subject = encodeURIComponent(`Meteo ${WEATHER.city}`);
+            const body = encodeURIComponent(text + '\n\n' + window.location.href);
+            window.open(`mailto:?subject=${subject}&body=${body}`);
+        }
+
+        function shareText() {
+            closeShareMenu();
+            const text = buildShareText();
+            navigator.clipboard.writeText(text).then(() => {
+                showShareFeedback('✓ Testo copiato!');
+            }).catch(() => { prompt('Copia il testo meteo:', text); });
+        }
+
+        function showShareFeedback(msg) {
+            const btn = document.getElementById('shareBtn');
+            const orig = btn.textContent;
+            btn.textContent = msg;
+            btn.classList.add('copied');
+            setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+        }
+
+        // Chiudi il menu share cliccando fuori
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.share-wrapper')) closeShareMenu();
+        });
     </script>
 </body>
 </html>

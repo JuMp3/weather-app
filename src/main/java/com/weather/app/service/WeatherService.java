@@ -128,6 +128,7 @@ public class WeatherService {
             for (int i = 0; i < daily.getTime().size(); i++) {
                 WeatherViewModel.DailyForecast f = new WeatherViewModel.DailyForecast();
                 String date = daily.getTime().get(i);
+                f.setIsoDate(date);
                 f.setDate(formatDate(date));
                 f.setDayName(getDayName(date));
                 f.setToday(date.equals(today));
@@ -152,13 +153,13 @@ public class WeatherService {
         WeatherData.HourlyWeather hourly = data.getHourly();
         if (hourly != null && hourly.getTime() != null) {
             List<WeatherViewModel.HourlySlot> slots = new ArrayList<>();
+            List<WeatherViewModel.HourlySlot> allSlots = new ArrayList<>();
             LocalDateTime now = LocalDateTime.now();
             int count = 0;
-            for (int i = 0; i < hourly.getTime().size() && count < 24; i++) {
+            for (int i = 0; i < hourly.getTime().size(); i++) {
                 String timeStr = hourly.getTime().get(i);
                 LocalDateTime slotTime = LocalDateTime.parse(timeStr,
                         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"));
-                if (slotTime.isBefore(now)) continue;
 
                 WeatherViewModel.HourlySlot slot = new WeatherViewModel.HourlySlot();
                 slot.setTime(timeStr);
@@ -169,10 +170,15 @@ public class WeatherService {
                 slot.setWeatherCode(code);
                 slot.setWeatherIcon(weatherCodeService.getIcon(code, slotTime.getHour() >= 7 && slotTime.getHour() < 20));
                 slot.setWindSpeed(round1(safeGetDouble(hourly.getWindSpeed(), i)));
-                slots.add(slot);
-                count++;
+                allSlots.add(slot);
+
+                if (!slotTime.isBefore(now) && count < 24) {
+                    slots.add(slot);
+                    count++;
+                }
             }
             vm.setNextHours(slots);
+            vm.setAllHourlySlots(allSlots);
         }
 
         return vm;
