@@ -1,0 +1,23 @@
+# Build output
+target/
+
+# IDE - IntelliJ IDEA
+.idea/
+.idea/**
+*.iml
+*.iws
+*.ipr
+
+# IDE - VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Spring Boot
+spring-shell.log

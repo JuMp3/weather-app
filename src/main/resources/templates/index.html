@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">Meteo</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-default home-page">
+
+    <div class="container home-container">
+        <div class="hero-card">
+            <div class="hero-icon">🌍</div>
+            <h1 class="hero-title">Meteo Italia &amp; Mondo</h1>
+            <p class="hero-subtitle">Inserisci il nome di una città per scoprire il meteo attuale e le previsioni dei prossimi 7 giorni</p>
+
+            <!-- Error message -->
+            <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+            <!-- Search form -->
+            <form action="/weather" method="get" class="search-form" id="weatherForm" autocomplete="off">
+                <div class="search-wrapper">
+                    <div class="search-input-group">
+                        <span class="search-icon">🔍</span>
+                        <input
+                            type="text"
+                            id="cityInput"
+                            name="city"
+                            placeholder="Es: Roma, Milano, New York..."
+                            class="search-input"
+                            required
+                            minlength="2"
+                            autofocus
+                        />
+                        <input type="hidden" id="latInput" name="lat"/>
+                        <input type="hidden" id="lonInput" name="lon"/>
+                    </div>
+                    <div id="autocomplete-list" class="autocomplete-list" role="listbox" aria-label="Suggerimenti città"></div>
+                </div>
+                <button type="submit" class="btn-search">
+                    <span>Cerca Meteo</span>
+                    <span class="btn-arrow">→</span>
+                </button>
+            </form>
+
+            <div class="quick-cities">
+                <span class="quick-label">Cerca velocemente:</span>
+                <div class="quick-buttons">
+                    <button class="quick-btn" onclick="quickSearch('Roma')">🏛️ Roma</button>
+                    <button class="quick-btn" onclick="quickSearch('Milano')">🏙️ Milano</button>
+                    <button class="quick-btn" onclick="quickSearch('Napoli')">🌋 Napoli</button>
+                    <button class="quick-btn" onclick="quickSearch('Venezia')">🚤 Venezia</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p class="attribution">Dati meteo forniti da <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo.com</a> sotto licenza <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>
+
+    <script>
+        const cityInput = document.getElementById('cityInput');
+        const latInput = document.getElementById('latInput');
+        const lonInput = document.getElementById('lonInput');
+        const autocompleteList = document.getElementById('autocomplete-list');
+        let debounceTimer = null;
+        let selectedIndex = -1;
+        let suggestions = [];
+
+        function quickSearch(city) {
+            cityInput.value = city;
+            latInput.value = '';
+            lonInput.value = '';
+            document.getElementById('weatherForm').submit();
+        }
+
+        cityInput.addEventListener('input', function() {
+            const query = this.value.trim();
+            latInput.value = '';
+            lonInput.value = '';
+
+            clearTimeout(debounceTimer);
+            if (query.length < 2) {
+                closeAutocomplete();
+                return;
+            }
+            debounceTimer = setTimeout(() => fetchCities(query), 300);
+        });
+
+        cityInput.addEventListener('keydown', function(e) {
+            const items = autocompleteList.querySelectorAll('.autocomplete-item');
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                updateSelection(items);
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, -1);
+                updateSelection(items);
+            } else if (e.key === 'Enter' && selectedIndex >= 0 && items.length > 0) {
+                e.preventDefault();
+                items[selectedIndex].click();
+            } else if (e.key === 'Escape') {
+                closeAutocomplete();
+            }
+        });
+
+        function updateSelection(items) {
+            items.forEach((item, i) => {
+                item.classList.toggle('selected', i === selectedIndex);
+            });
+            if (selectedIndex >= 0 && items[selectedIndex]) {
+                const s = suggestions[selectedIndex];
+                cityInput.value = s.name;
+                latInput.value = s.lat;
+                lonInput.value = s.lon;
+            }
+        }
+
+        async function fetchCities(query) {
+            try {
+                const response = await fetch(`/api/cities?q=${encodeURIComponent(query)}`);
+                suggestions = await response.json();
+                renderAutocomplete(suggestions);
+            } catch (err) {
+                closeAutocomplete();
+            }
+        }
+
+        function renderAutocomplete(cities) {
+            selectedIndex = -1;
+            autocompleteList.innerHTML = '';
+
+            if (!cities || cities.length === 0) {
+                closeAutocomplete();
+                return;
+            }
+
+            cities.forEach((city, index) => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.setAttribute('role', 'option');
+                item.innerHTML = `
+                    <span class="ac-flag">${getFlagEmoji(city.countryCode)}</span>
+                    <div class="ac-text">
+                        <span class="ac-name">${city.name}</span>
+                        <span class="ac-sub">${city.displayName !== city.name ? city.displayName.replace(city.name + ', ', '') : ''}</span>
+                    </div>
+                    <span class="ac-coords">${city.lat.toFixed(2)}°, ${city.lon.toFixed(2)}°</span>
+                `;
+                item.addEventListener('click', () => {
+                    cityInput.value = city.name;
+                    latInput.value = city.lat;
+                    lonInput.value = city.lon;
+                    closeAutocomplete();
+                    document.getElementById('weatherForm').submit();
+                });
+                autocompleteList.appendChild(item);
+            });
+
+            autocompleteList.classList.add('open');
+        }
+
+        function closeAutocomplete() {
+            autocompleteList.innerHTML = '';
+            autocompleteList.classList.remove('open');
+            selectedIndex = -1;
+        }
+
+        function getFlagEmoji(countryCode) {
+            if (!countryCode || countryCode.length !== 2) return '🌐';
+            const codePoints = [...countryCode.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65);
+            return String.fromCodePoint(...codePoints);
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-wrapper')) {
+                closeAutocomplete();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${title}">Meteo</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body th:class="'weather-page ' + ${weather.current.backgroundClass}">
+
+    <!-- Top Nav -->
+    <nav class="top-nav">
+        <a href="/" class="nav-back">← Cerca altra città</a>
+        <div class="nav-search-mini" autocomplete="off">
+            <input type="text" id="miniCityInput" placeholder="Cerca città..." class="mini-input"/>
+            <input type="hidden" id="miniLat"/>
+            <input type="hidden" id="miniLon"/>
+            <div id="mini-autocomplete" class="autocomplete-list mini-autocomplete"></div>
+        </div>
+    </nav>
+
+    <div class="weather-container">
+
+        <!-- Current Weather Card -->
+        <div class="current-card">
+            <div class="current-header">
+                <div class="city-info">
+                    <h1 class="city-name" th:text="${weather.cityDisplayName}">Roma</h1>
+                    <div class="city-meta">
+                        <span th:text="'📍 ' + ${weather.latitude} + '°, ' + ${weather.longitude} + '°'"></span>
+                        <span th:if="${weather.elevation != null}" th:text="'⛰️ ' + ${weather.elevation} + 'm'"></span>
+                        <span th:text="'🕐 Aggiornato: ' + ${weather.current.time}"></span>
+                    </div>
+                </div>
+                <div class="weather-icon-large" th:text="${weather.current.weatherIcon}"></div>
+            </div>
+
+            <div class="temp-section">
+                <div class="temp-main">
+                    <span class="temp-value" th:text="${weather.current.temperature}">20</span>
+                    <span class="temp-unit">°C</span>
+                </div>
+                <div class="temp-feels">
+                    <span>Percepita </span>
+                    <span th:text="${weather.current.feelsLike} + '°C'"></span>
+                </div>
+                <div class="weather-desc" th:text="${weather.current.weatherDescription}">Cielo sereno</div>
+            </div>
+
+            <!-- Weather Details Grid -->
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-icon">💧</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Umidità</span>
+                        <span class="detail-value" th:text="${weather.current.humidity} + '%'">65%</span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">💨</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Vento</span>
+                        <span class="detail-value"
+                            th:text="${weather.current.windSpeed} + ' km/h ' + ${weather.current.windDirectionLabel}">
+                        </span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">🌡️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Pressione</span>
+                        <span class="detail-value" th:text="${weather.current.pressure} + ' hPa'"></span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">👁️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Visibilità</span>
+                        <span class="detail-value" th:text="${weather.current.visibilityKm} + ' km'"></span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">☁️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Nuvolosità</span>
+                        <span class="detail-value" th:text="${weather.current.cloudCover} + '%'"></span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">☀️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Indice UV</span>
+                        <span class="detail-value" th:text="${weather.current.uvIndex}"></span>
+                    </div>
+                </div>
+                <div class="detail-item" th:if="${weather.current.precipitation != null}">
+                    <span class="detail-icon">🌧️</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Precipitazioni</span>
+                        <span class="detail-value" th:text="${weather.current.precipitation} + ' mm'"></span>
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-icon">🌐</span>
+                    <div class="detail-info">
+                        <span class="detail-label">Fuso orario</span>
+                        <span class="detail-value" th:text="${weather.timezone}"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hourly Forecast -->
+        <div class="section-card" th:if="${not #lists.isEmpty(weather.nextHours)}">
+            <h2 class="section-title">🕐 Prossime 24 ore</h2>
+            <div class="hourly-scroll">
+                <div class="hourly-track">
+                    <div th:each="slot : ${weather.nextHours}" class="hourly-item">
+                        <span class="hourly-time" th:text="${slot.displayTime}">14:00</span>
+                        <span class="hourly-icon" th:text="${slot.weatherIcon}">☀️</span>
+                        <span class="hourly-temp" th:text="${slot.temperature} + '°'">20°</span>
+                        <span class="hourly-rain" th:if="${slot.precipitationProbability != null}"
+                              th:text="'💧 ' + ${slot.precipitationProbability} + '%'">💧 10%</span>
+                        <span class="hourly-rain" th:unless="${slot.precipitationProbability != null}">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 7-Day Forecast -->
+        <div class="section-card" th:if="${not #lists.isEmpty(weather.dailyForecasts)}">
+            <h2 class="section-title">📅 Previsioni 7 giorni</h2>
+            <div class="daily-list">
+                <div th:each="day : ${weather.dailyForecasts}"
+                     th:class="'daily-item' + (${day.today} ? ' today' : '')">
+                    <div class="daily-day">
+                        <span class="day-name" th:text="${day.dayName}">Oggi</span>
+                        <span class="day-date" th:text="${day.date}">01/01</span>
+                    </div>
+                    <div class="daily-weather">
+                        <span class="daily-icon" th:text="${day.weatherIcon}">☀️</span>
+                        <span class="daily-desc" th:text="${day.weatherDescription}">Sereno</span>
+                    </div>
+                    <div class="daily-temps">
+                        <span class="temp-max" th:text="${day.tempMax} + '°'">25°</span>
+                        <span class="temp-bar-wrapper">
+                            <span class="temp-bar"></span>
+                        </span>
+                        <span class="temp-min" th:text="${day.tempMin} + '°'">15°</span>
+                    </div>
+                    <div class="daily-extra">
+                        <span class="daily-rain"
+                              th:if="${day.precipitationProbability != null}"
+                              th:text="'💧 ' + ${day.precipitationProbability} + '%'">💧 20%</span>
+                        <span class="daily-wind"
+                              th:text="'💨 ' + ${day.windSpeedMax} + ' km/h'"></span>
+                    </div>
+                    <div class="daily-sun">
+                        <span th:text="'🌅 ' + ${day.sunrise}">🌅 06:00</span>
+                        <span th:text="'🌇 ' + ${day.sunset}">🌇 20:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /weather-container -->
+
+    <p class="attribution">Dati meteo forniti da <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo.com</a> sotto licenza <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a></p>
+
+    <script>
+        // Mini search in navbar
+        const miniInput = document.getElementById('miniCityInput');
+        const miniLat = document.getElementById('miniLat');
+        const miniLon = document.getElementById('miniLon');
+        const miniAc = document.getElementById('mini-autocomplete');
+        let miniTimer = null;
+        let miniSuggestions = [];
+        let miniIdx = -1;
+
+        miniInput.addEventListener('input', function() {
+            const q = this.value.trim();
+            miniLat.value = '';
+            miniLon.value = '';
+            clearTimeout(miniTimer);
+            if (q.length < 2) { closeMini(); return; }
+            miniTimer = setTimeout(() => fetchMini(q), 300);
+        });
+
+        miniInput.addEventListener('keydown', function(e) {
+            const items = miniAc.querySelectorAll('.autocomplete-item');
+            if (e.key === 'ArrowDown') { e.preventDefault(); miniIdx = Math.min(miniIdx + 1, items.length - 1); updateMiniSel(items); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); miniIdx = Math.max(miniIdx - 1, -1); updateMiniSel(items); }
+            else if (e.key === 'Enter') {
+                if (miniIdx >= 0 && items.length > 0) { e.preventDefault(); items[miniIdx].click(); }
+                else if (miniInput.value.trim().length >= 2) {
+                    window.location.href = '/weather?city=' + encodeURIComponent(miniInput.value.trim());
+                }
+            }
+            else if (e.key === 'Escape') { closeMini(); }
+        });
+
+        function updateMiniSel(items) {
+            items.forEach((item, i) => item.classList.toggle('selected', i === miniIdx));
+            if (miniIdx >= 0 && miniSuggestions[miniIdx]) {
+                const s = miniSuggestions[miniIdx];
+                miniInput.value = s.name;
+                miniLat.value = s.lat;
+                miniLon.value = s.lon;
+            }
+        }
+
+        async function fetchMini(q) {
+            try {
+                const r = await fetch(`/api/cities?q=${encodeURIComponent(q)}`);
+                miniSuggestions = await r.json();
+                renderMini(miniSuggestions);
+            } catch(e) { closeMini(); }
+        }
+
+        function renderMini(cities) {
+            miniIdx = -1;
+            miniAc.innerHTML = '';
+            if (!cities || cities.length === 0) { closeMini(); return; }
+            cities.forEach((city, i) => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.innerHTML = `<span class="ac-flag">${getFlagEmoji(city.countryCode)}</span>
+                    <div class="ac-text"><span class="ac-name">${city.name}</span>
+                    <span class="ac-sub">${city.displayName !== city.name ? city.displayName.replace(city.name + ', ', '') : ''}</span></div>`;
+                item.addEventListener('click', () => {
+                    closeMini();
+                    window.location.href = `/weather?city=${encodeURIComponent(city.name)}&lat=${city.lat}&lon=${city.lon}`;
+                });
+                miniAc.appendChild(item);
+            });
+            miniAc.classList.add('open');
+        }
+
+        function closeMini() {
+            miniAc.innerHTML = '';
+            miniAc.classList.remove('open');
+            miniIdx = -1;
+        }
+
+        function getFlagEmoji(cc) {
+            if (!cc || cc.length !== 2) return '🌐';
+            return String.fromCodePoint(...[...cc.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.nav-search-mini')) closeMini();
+        });
+
+        // Drag-to-scroll per la sezione "Prossime 24 ore"
+        const hourlyScroll = document.querySelector('.hourly-scroll');
+        if (hourlyScroll) {
+            let isDragging = false;
+            let startX, scrollLeft;
+
+            hourlyScroll.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                hourlyScroll.classList.add('dragging');
+                startX = e.pageX - hourlyScroll.offsetLeft;
+                scrollLeft = hourlyScroll.scrollLeft;
+            });
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                hourlyScroll.classList.remove('dragging');
+            });
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const x = e.pageX - hourlyScroll.offsetLeft;
+                hourlyScroll.scrollLeft = scrollLeft - (x - startX) * 1.5;
+            });
+        }
+    </script>
+</body>
+</html>
